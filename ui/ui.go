@@ -21,5 +21,21 @@ func NewUI() *UI {
 
 func (ui *UI) Run() {
 	fmt.Println("----- SERVER MONITOR ----")
-	go ui.Stack.Start()
+	someChan := make(chan struct{})
+	ui.Stack.StartStack()
+	go ui.Stack.Monitoring(ui.Stack.Servers, someChan)
+	for {
+		ui.scanner.Scan()
+		line := ui.scanner.Text()
+		switch line {
+		case "q":
+			close(someChan)
+			ui.Stack.StopStack()
+			return
+		case "1":
+			ui.Stack.AddTask()
+		default:
+			return
+		}
+	}
 }

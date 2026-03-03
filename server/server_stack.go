@@ -9,28 +9,32 @@ import (
 )
 
 type Stack struct {
-	Servers       []*Server
-	taskChannel   chan *Task
+	Servers       []*server
 	wg            sync.WaitGroup
+	taskChannel   chan *Task
 	quitChannel   chan struct{}
 	totalComplete atomic.Int64
 }
 
 func NewStack() *Stack {
-	return &Stack{}
-}
-
-func (s *Stack) Start() {
-
-	for i := 0; i < 5; i++ {
-		server := NewServer()
-		s.Servers = append(s.Servers, server)
-		s.wg.Add(1)
-		go server.Run(s.taskChannel, s.quitChannel, &s.wg)
+	return &Stack{
+		Servers:     make([]*server, 0, 5),
+		taskChannel: make(chan *Task, 10),
+		quitChannel: make(chan struct{}, 5),
 	}
 }
 
-func (s *Stack) Stop() {
+func (s *Stack) StartStack() {
+
+	for i := 0; i < 5; i++ {
+		server := newServer()
+		s.Servers = append(s.Servers, server)
+		s.wg.Add(1)
+		go server.startServer(s.taskChannel, s.quitChannel, &s.wg)
+	}
+}
+
+func (s *Stack) StopStack() {
 	close(s.taskChannel)
 	close(s.quitChannel)
 	s.wg.Wait()
@@ -40,14 +44,17 @@ func (s *Stack) AddTask() {
 	s.taskChannel <- NewTask()
 }
 
-func (s *Stack) RunMonitor(servers []*Server) {
+func (s *Stack) Monitoring(servers []*server, qc <-chan struct{}) {
+	ticker := time.NewTicker(2 * time.Second)
+	defer ticker.Stop()
 	for {
 		select {
-		case <-time.After(2 * time.Second):
-			for _, server := range servers {
-				fmt.Println(server)
+		case <-ticker.C:
+			for index, server := range servers {
+				fmt.Println(server.toString(index))
 			}
-		case <-s.quitChannel:
+			fmt.Println("")
+		case <-qc:
 			return
 		}
 	}
