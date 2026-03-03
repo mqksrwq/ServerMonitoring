@@ -8,15 +8,26 @@ import (
 	"time"
 )
 
+// Stack - структура стека серверов
 type Stack struct {
-	Servers       []*server
-	wg            sync.WaitGroup
-	taskChannel   chan *Task
-	quitChannel   chan struct{}
+
+	// Servers - слайс серверов в стеке
+	Servers []*server
+
+	// wg - ожидающая группа
+	wg sync.WaitGroup
+
+	// taskChannel - канал для синхронизации задач между горутинами
+	taskChannel chan *Task
+
+	// quitChannel - канал для завершения работы серверов
+	quitChannel chan struct{}
+
+	// totalComplete - количество выполненных задач стеком
 	totalComplete atomic.Int64
-	PrintMutex    sync.Mutex
 }
 
+// NewStack - метод, создающий новый стек серверов
 func NewStack() *Stack {
 	return &Stack{
 		Servers:     make([]*server, 0, 5),
@@ -25,8 +36,8 @@ func NewStack() *Stack {
 	}
 }
 
+// StartStack - метод, запускающий стек серверов
 func (s *Stack) StartStack() {
-
 	for i := 0; i < 5; i++ {
 		server := newServer()
 		s.Servers = append(s.Servers, server)
@@ -35,29 +46,29 @@ func (s *Stack) StartStack() {
 	}
 }
 
+// StopStack - метод, останавливающий стек и закрывающий каналы
 func (s *Stack) StopStack() {
 	close(s.taskChannel)
 	close(s.quitChannel)
 	s.wg.Wait()
 }
 
+// AddTask - метод, добавляющий задачу для сервера в очередь
 func (s *Stack) AddTask() {
 	s.taskChannel <- NewTask()
 }
 
+// Monitoring - метод, запускающий мониторинг серверов в стеке
 func (s *Stack) Monitoring(servers []*server, qc <-chan struct{}) {
 	ticker := time.NewTicker(2 * time.Second)
 	defer ticker.Stop()
 	for {
 		select {
 		case <-ticker.C:
-			s.PrintMutex.Lock()
-			fmt.Print("\033[H\033[2J")
 			for index, server := range servers {
 				fmt.Printf("\033[2K%s\n", server.toString(index))
 			}
 			fmt.Printf("-----\n")
-			s.PrintMutex.Unlock()
 		case <-qc:
 			return
 		}

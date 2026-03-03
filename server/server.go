@@ -8,16 +8,25 @@ import (
 	"time"
 )
 
+// server - структура условного сервера
 type server struct {
-	mu        sync.Mutex
+
+	// mu - блокировщик записи
+	mu sync.Mutex
+
+	// completed - количество выполненных сервером задач
 	completed int64
-	isBusy    atomic.Bool
+
+	// isBusy - булевое значение, занят/не занят
+	isBusy atomic.Bool
 }
 
+// newServer - метод, создающий новый сервер
 func newServer() *server {
 	return &server{}
 }
 
+// startServer - метод, запускающий определенный сервер
 func (s *server) startServer(tc <-chan *Task, qc <-chan struct{}, wg *sync.WaitGroup) {
 	defer wg.Done()
 
@@ -43,6 +52,7 @@ func (s *server) startServer(tc <-chan *Task, qc <-chan struct{}, wg *sync.WaitG
 	}
 }
 
+// toString - метод, конвертирующий структуру сервера в удобочитаемую строку
 func (s *server) toString(i int) string {
 	return fmt.Sprintf("server %d\tcompleted %d\t"+
 		"isBusy %t\t", i, s.completed, s.isBusy.Load())
