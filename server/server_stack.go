@@ -14,6 +14,7 @@ type Stack struct {
 	taskChannel   chan *Task
 	quitChannel   chan struct{}
 	totalComplete atomic.Int64
+	PrintMutex    sync.Mutex
 }
 
 func NewStack() *Stack {
@@ -50,10 +51,13 @@ func (s *Stack) Monitoring(servers []*server, qc <-chan struct{}) {
 	for {
 		select {
 		case <-ticker.C:
+			s.PrintMutex.Lock()
+			fmt.Print("\033[H\033[2J")
 			for index, server := range servers {
-				fmt.Println(server.toString(index))
+				fmt.Printf("\033[2K%s\n", server.toString(index))
 			}
-			fmt.Println("")
+			fmt.Printf("-----\n")
+			s.PrintMutex.Unlock()
 		case <-qc:
 			return
 		}
